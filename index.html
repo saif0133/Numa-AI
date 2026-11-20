@@ -1,0 +1,929 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Numa · Care between sessions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600;700&family=IBM+Plex+Sans+Arabic:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1C2B3A; --ink-2:#4A5868; --ink-3:#7A8796;
+  --mist:#EDF0F3; --surface:#FFFFFF; --line:#DCE2E8;
+  --sage:#3D7A70; --sage-soft:#E2EFEC; --sage-deep:#2C5C54;
+  --dusk:#6E62A8; --dusk-soft:#ECE9F6;
+  --night:#C3CBEA; --night-deep:#8C98CF;
+  --alert:#B24A3B; --alert-soft:#F8E6E1; --amber:#B9822B; --amber-soft:#F7EEDD;
+  --r-lg:18px; --r-md:12px; --r-sm:8px;
+  --f-head:"Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --f-body:"Figtree", system-ui, sans-serif;
+  --f-ar:"IBM Plex Sans Arabic", "Figtree", system-ui, sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{font-family:var(--f-body);color:var(--ink);background:var(--mist);font-size:15px;line-height:1.5}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--dusk);outline-offset:2px;border-radius:6px}
+.ar{font-family:var(--f-ar);direction:rtl;text-align:right}
+[dir=auto]{unicode-bidi:plaintext}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- top bar ---------- */
+.top{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;display:flex;align-items:center;gap:20px;padding:12px 28px;flex-wrap:wrap}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font-family:var(--f-head);font-size:24px;font-weight:700;letter-spacing:-.01em}
+.brand span{color:#AFC0CF;font-size:13px}
+.roles{display:flex;gap:4px;background:rgba(255,255,255,.08);padding:4px;border-radius:999px;margin-left:auto}
+.roles button{border:0;background:transparent;color:#D8E1EA;padding:8px 16px;border-radius:999px;font-weight:600;font-size:14px}
+.roles button[aria-selected=true]{background:#fff;color:var(--ink)}
+.demo-pill{font-size:12px;color:#F3E3B5;border:1px solid rgba(243,227,181,.4);padding:4px 10px;border-radius:999px}
+.reset{border:1px solid rgba(255,255,255,.25);background:none;color:#fff;border-radius:999px;padding:6px 12px;font-size:13px}
+
+main{max-width:1240px;margin:0 auto;padding:28px}
+.view{display:none}
+.view.on{display:block}
+h1,h2,h3{font-family:var(--f-head);margin:0;letter-spacing:-.01em}
+h2{font-size:20px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+.muted{color:var(--ink-3)}
+.small{font-size:13px}
+
+/* ---------- patient view ---------- */
+.patient-wrap{display:grid;grid-template-columns:400px 1fr;gap:36px;align-items:start}
+.phone{background:var(--surface);border-radius:34px;box-shadow:0 0 0 10px var(--ink),0 24px 50px -20px rgba(28,43,58,.55);overflow:hidden;height:760px;display:flex;flex-direction:column;margin:10px}
+.ph-head{padding:18px 20px 10px;display:flex;justify-content:space-between;align-items:center}
+.ph-head .hi{font-family:var(--f-head);font-size:20px;font-weight:700}
+.ph-tabs{display:flex;margin:0 14px;background:var(--mist);border-radius:12px;padding:4px}
+.ph-tabs button{flex:1;border:0;background:none;padding:8px 4px;border-radius:9px;font-weight:600;font-size:14px;color:var(--ink-2)}
+.ph-tabs button[aria-selected=true]{background:#fff;color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.ph-body{flex:1;overflow-y:auto;padding:14px 18px 20px}
+.ph-pane{display:none}.ph-pane.on{display:block}
+
+.prompt{background:var(--dusk-soft);border-radius:var(--r-md);padding:10px 12px;font-size:13px;margin-bottom:12px}
+.prompt b{color:var(--dusk)}
+textarea{width:100%;min-height:110px;border:1px solid var(--line);border-radius:var(--r-md);padding:12px;resize:vertical;font-family:var(--f-ar);font-size:15px;background:#FBFCFD}
+.lbl{font-size:13px;font-weight:600;color:var(--ink-2);margin:12px 0 6px}
+.moods{display:flex;gap:6px}
+.moods button{flex:1;border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 0;font-size:13px;font-weight:600;color:var(--ink-2)}
+.moods button[aria-pressed=true]{background:var(--dusk);border-color:var(--dusk);color:#fff}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{border:1px solid var(--line);background:#fff;border-radius:999px;padding:5px 11px;font-size:13px}
+.chip[aria-pressed=true]{background:var(--sage-soft);border-color:var(--sage);color:var(--sage-deep);font-weight:600}
+.share{display:flex;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.share button{flex:1;border:0;background:#fff;padding:9px;font-size:13px;font-weight:600;color:var(--ink-2)}
+.share button[aria-pressed=true]{background:var(--ink);color:#fff}
+.hint{font-size:12px;color:var(--ink-3);margin-top:6px}
+.btn{border:0;border-radius:12px;padding:11px 16px;font-weight:700;background:var(--sage);color:#fff}
+.btn:hover{background:var(--sage-deep)}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.warn{background:var(--alert)}
+.btn.block{width:100%;margin-top:14px}
+.entry{border-top:1px solid var(--line);padding:10px 0;font-size:14px}
+.entry .meta{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);margin-bottom:3px}
+.tag-shared{color:var(--sage-deep);font-weight:600}
+.tag-private{color:var(--ink-3)}
+.tag-risk{color:var(--alert);font-weight:600}
+
+/* chat */
+.chat{display:flex;flex-direction:column;gap:8px}
+.msg{max-width:86%;padding:9px 12px;border-radius:16px;font-family:var(--f-ar);direction:rtl;font-size:15px}
+.msg.ai{background:var(--mist);align-self:flex-end;border-bottom-right-radius:4px}
+.msg.me{background:var(--sage);color:#fff;align-self:flex-start;border-bottom-left-radius:4px}
+.sys{align-self:center;font-size:12px;color:var(--dusk);background:var(--dusk-soft);border-radius:999px;padding:4px 10px;text-align:center}
+.qr{display:flex;flex-wrap:wrap;gap:6px;justify-content:flex-end;margin-top:4px}
+.qr button{border:1px solid var(--sage);color:var(--sage-deep);background:#fff;border-radius:999px;padding:6px 12px;font-family:var(--f-ar);font-size:14px}
+.chat-input{display:flex;gap:6px;margin-top:12px}
+.chat-input input{flex:1;border:1px solid var(--line);border-radius:999px;padding:9px 14px;font-family:var(--f-ar);direction:rtl}
+.chat-tools{display:flex;justify-content:space-between;margin-top:10px}
+.link{border:0;background:none;color:var(--ink-2);text-decoration:underline;font-size:13px;padding:2px}
+
+/* side guide */
+.guide h1{font-size:34px;line-height:1.1;font-weight:700;max-width:18ch}
+.guide p.lead{color:var(--ink-2);max-width:56ch;margin:12px 0 22px}
+.try{background:var(--surface);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:14px;border:1px solid var(--line)}
+.try h3{margin-bottom:6px}
+.try p{margin:0 0 10px;color:var(--ink-2);font-size:14px}
+.try .ex{display:flex;flex-wrap:wrap;gap:8px}
+.try .ex button{border:1px dashed var(--ink-3);background:#FBFCFD;border-radius:10px;padding:7px 12px;font-family:var(--f-ar);font-size:14px}
+.try .ex button:hover{border-style:solid;border-color:var(--dusk)}
+.note{font-size:12.5px;color:var(--ink-3);max-width:60ch}
+
+/* ---------- clinician view ---------- */
+.dash{display:grid;grid-template-columns:230px 1fr;gap:24px}
+.plist{background:var(--surface);border-radius:var(--r-lg);padding:10px;border:1px solid var(--line);align-self:start}
+.plist h3{padding:8px 10px}
+.pbtn{display:block;width:100%;text-align:left;border:0;background:none;border-radius:10px;padding:10px;margin-bottom:2px}
+.pbtn[aria-current=true]{background:var(--mist)}
+.pbtn b{display:block;font-size:14px}
+.pbtn span{font-size:12px;color:var(--ink-3)}
+.pbtn .dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--alert);margin-left:6px;vertical-align:middle}
+.phead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:16px}
+.phead h1{font-size:30px}
+.alert-banner{display:none;background:var(--alert-soft);border:1px solid #E7BDB3;border-radius:var(--r-lg);padding:14px 18px;margin-bottom:16px}
+.alert-banner.on{display:block}
+.alert-banner h3{color:var(--alert)}
+.alert-banner blockquote{margin:8px 0;padding:8px 12px;background:#fff;border-radius:10px;font-family:var(--f-ar);direction:rtl}
+.alert-banner .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
+
+/* the memorable thing: the between-sessions strip */
+.gap{background:var(--ink);color:#fff;border-radius:22px;padding:20px 22px 16px;margin-bottom:18px}
+.gap-head{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.gap-head h2{font-size:19px}
+.gap-head .legend{display:flex;gap:14px;font-size:12px;color:#B8C6D3;flex-wrap:wrap}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.gap svg{width:100%;height:auto;display:block}
+.gap .cap{font-size:12.5px;color:#B8C6D3;margin-top:8px}
+
+.grid{display:grid;grid-template-columns:1.25fr 1fr;gap:18px}
+.panel{background:var(--surface);border-radius:var(--r-lg);border:1px solid var(--line);padding:18px 20px}
+.panel h2{margin-bottom:4px}
+.panel .sub{font-size:13px;color:var(--ink-3);margin-bottom:12px}
+.ins{padding:12px 0;border-top:1px solid var(--line)}
+.ins:first-of-type{border-top:0}
+.ins p{margin:0 0 4px}
+.ev{font-size:12.5px;color:var(--ink-3)}
+.badge{display:inline-block;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.b-early{background:var(--amber-soft);color:var(--amber)}
+.b-pattern{background:var(--sage-soft);color:var(--sage-deep)}
+.topic{border:1px solid var(--line);border-radius:var(--r-md);padding:12px 14px;margin-top:10px}
+.topic h3{font-size:15px}
+.topic-add{display:flex;gap:8px}
+.topic-add input{flex:1;border:1px solid var(--line);border-radius:10px;padding:9px 12px}
+.sh-entry{border-top:1px solid var(--line);padding:10px 0}
+.sh-entry .txt{font-family:var(--f-ar);direction:rtl;text-align:right}
+.locked{display:flex;gap:8px;align-items:center;color:var(--ink-3);font-size:13px;background:var(--mist);border-radius:10px;padding:8px 12px;margin-top:10px}
+.right-col{display:flex;flex-direction:column;gap:18px}
+
+/* ---------- safety team view ---------- */
+.safety{display:grid;grid-template-columns:1fr 320px;gap:20px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:12px}
+.case.urgent{border-color:#E1A99C}
+.case .top-row{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.case blockquote{margin:10px 0;padding:8px 12px;background:var(--mist);border-radius:10px;font-family:var(--f-ar);direction:rtl}
+.case .acts{display:flex;gap:8px;flex-wrap:wrap}
+.status{font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--mist)}
+.status.open{background:var(--alert-soft);color:var(--alert)}
+.status.done{background:var(--sage-soft);color:var(--sage-deep)}
+.empty{background:var(--surface);border:1px dashed var(--line);border-radius:var(--r-lg);padding:28px;color:var(--ink-3);text-align:center}
+.protocol ol{padding-left:20px;margin:8px 0 0;font-size:14px;color:var(--ink-2)}
+.protocol li{margin-bottom:6px}
+
+/* ---------- modal ---------- */
+.modal{position:fixed;inset:0;background:rgba(28,43,58,.55);display:none;align-items:center;justify-content:center;z-index:50;padding:16px}
+.modal.on{display:flex}
+.sheet{background:#fff;border-radius:22px;max-width:440px;width:100%;padding:22px 24px;box-shadow:0 30px 60px -20px rgba(0,0,0,.4)}
+.sheet h2{margin-bottom:6px}
+.sheet .ar-block{font-family:var(--f-ar);direction:rtl;text-align:right;background:var(--sage-soft);border-radius:12px;padding:12px 14px;margin:12px 0}
+.lines{display:grid;gap:8px;margin:12px 0}
+.lines a{display:flex;justify-content:space-between;background:var(--mist);border-radius:10px;padding:10px 12px;color:var(--ink);text-decoration:none;font-weight:600}
+.sheet .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:12px;font-size:14px;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:90vw}
+.toast.on{opacity:1}
+
+@media (max-width:980px){
+  .patient-wrap,.dash,.grid,.safety{grid-template-columns:1fr}
+  .phone{max-width:400px;margin:10px auto}
+  .roles{margin-left:0}
+  main{padding:16px}
+  .top{padding:12px 16px}
+  .dash>*,.grid>*,.safety>*{min-width:0}
+  .brand span{display:none}
+}
+
+/* Numa visual refresh — modern vibrant healthcare product */
+:root{
+  --ink:#1f2940; --ink-2:#58657d; --ink-3:#8a94aa;
+  --mist:#f4f7ff; --surface:rgba(255,255,255,.9); --surface-2:#f8fbff; --line:#dce5f3;
+  --sage:#15a1a8; --sage-soft:#e6fbfb; --sage-deep:#0b7280;
+  --dusk:#6c63ff; --dusk-soft:#efedff;
+  --night:#d9ebff; --night-deep:#8bb3ff;
+  --alert:#dd5b69; --alert-soft:#ffecef; --amber:#c9822b; --amber-soft:#fff2df;
+  --hero-a:#6c63ff; --hero-b:#22c1c3; --hero-c:#f59eb1;
+  --r-lg:20px; --r-md:14px; --r-sm:10px;
+  --f-head:"Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+  --f-body:"Figtree", system-ui, sans-serif;
+}
+html{scroll-behavior:smooth}
+body{
+  font-size:14px;line-height:1.6;color:var(--ink);
+  background:
+    radial-gradient(circle at 0% 0%, rgba(108,99,255,.12), transparent 34%),
+    radial-gradient(circle at 100% 20%, rgba(34,193,195,.14), transparent 28%),
+    radial-gradient(circle at 80% 100%, rgba(245,158,177,.12), transparent 26%),
+    linear-gradient(180deg,#f7f9ff 0%,#f3fbfa 48%,#f8f5ff 100%);
+}
+.top{
+  position:sticky;top:0;z-index:30;padding:18px clamp(18px,4vw,56px);
+  background:rgba(248,251,255,.82);backdrop-filter:blur(16px);color:var(--ink);
+  border-bottom:1px solid rgba(220,229,243,.9);box-shadow:0 10px 30px rgba(31,41,64,.06);gap:20px
+}
+.brand{align-items:center;gap:14px}
+.brand b{
+  font-family:var(--f-head);font-size:31px;font-weight:700;letter-spacing:-.045em;
+  background:linear-gradient(120deg,var(--hero-a),var(--hero-b));-webkit-background-clip:text;background-clip:text;color:transparent
+}
+.brand span{font-size:12px;color:var(--ink-3);border-left:1px solid var(--line);padding-left:14px;letter-spacing:.01em}
+.demo-pill{
+  order:3;border:1px solid #f1dbad;background:linear-gradient(135deg,#fff8e6,#fff2cd);color:#7b5a1d;
+  font-size:11px;padding:7px 12px;font-weight:700;letter-spacing:.01em;box-shadow:0 8px 18px rgba(201,130,43,.12)
+}
+.roles{background:#ffffff;box-shadow:inset 0 0 0 1px rgba(220,229,243,.9), 0 8px 22px rgba(31,41,64,.05);padding:5px;gap:7px;border-radius:999px;margin-left:auto}
+.roles button{border-radius:999px;color:var(--ink-2);font-size:13px;font-weight:700;padding:9px 14px;transition:background .18s,color .18s,transform .18s}
+.roles button:hover{background:#f5f7ff;color:var(--ink)}
+.roles button[aria-selected=true]{background:linear-gradient(135deg,var(--hero-a),#5477ff);color:#fff;box-shadow:0 8px 18px rgba(108,99,255,.28)}
+.reset{color:var(--ink);border:1px solid var(--line);background:#fff;border-radius:12px;font-weight:700;box-shadow:0 8px 18px rgba(31,41,64,.04)}
+main{max-width:1320px;padding:44px clamp(18px,4vw,56px) 80px}
+h1,h2,h3{letter-spacing:-.03em}h2{font-size:23px;font-weight:700}h3{font-size:18px;font-weight:700}
+.patient-wrap{grid-template-columns:400px minmax(0,1fr);gap:clamp(44px,7vw,96px);align-items:center}
+.phone{
+  height:756px;margin:12px 14px;background:linear-gradient(180deg,#ffffff 0%,#f9fbff 100%);border-radius:34px;
+  box-shadow:0 0 0 7px #20304f,0 0 0 10px #5e78c8,0 34px 75px -28px rgba(32,48,79,.38);
+  overflow:hidden;position:relative
+}
+.phone:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 20% 0%, rgba(108,99,255,.08), transparent 26%), radial-gradient(circle at 100% 100%, rgba(34,193,195,.08), transparent 28%);pointer-events:none}
+.ph-head{padding:24px 24px 18px;border-bottom:1px solid #edf1f8;position:relative}
+.ph-head .hi{font-size:26px;font-weight:700;letter-spacing:-.04em}
+.ph-head .muted{font-size:11px;margin-top:4px;color:var(--ink-3)}
+.ph-tabs{margin:14px 16px 4px;background:#f2f6ff;border-radius:14px;padding:6px;gap:6px;border:1px solid #e4ebf8}
+.ph-tabs button{border-radius:11px;padding:10px 0 11px;font-size:12px;font-weight:700;transition:.18s}
+.ph-tabs button[aria-selected=true]{background:linear-gradient(135deg,#ffffff,#fafdff);color:var(--dusk);box-shadow:0 6px 14px rgba(108,99,255,.12), inset 0 0 0 1px #e7ebff;border-bottom:0}
+.ph-body{padding:18px 22px 24px}
+.prompt{background:linear-gradient(135deg,var(--dusk-soft),#f8f7ff);border:1px solid #e6e3ff;border-radius:14px;padding:13px 14px;line-height:1.65;box-shadow:0 8px 18px rgba(108,99,255,.06)}
+.prompt b{color:var(--dusk)}
+textarea,.chat-input input,.topic-add input,.checkgrid input,.checkgrid select{
+  background:#fff;border:1px solid var(--line);border-radius:12px;min-height:auto;line-height:1.7;
+  box-shadow:0 4px 12px rgba(31,41,64,.03)
+}
+textarea{min-height:126px}
+textarea:focus,input:focus,select:focus{outline:2px solid rgba(34,193,195,.25);outline-offset:1px;border-color:#9edfe1}
+.lbl{margin-top:17px;color:var(--ink-2);font-size:12px;font-weight:700;letter-spacing:.02em}
+.moods{gap:7px}.moods button{border-radius:12px;padding:9px 1px;font-size:12px;border-color:#e3e8f3;background:#fff;font-weight:700}
+.moods button[aria-pressed=true]{background:linear-gradient(135deg,var(--hero-a),#5464ff);border-color:transparent;color:#fff;box-shadow:0 8px 16px rgba(108,99,255,.24)}
+.chip{border-radius:999px;padding:7px 11px;font-size:12px;background:#fff;border-color:#e1e8f5;font-weight:600}
+.chip[aria-pressed=true]{background:var(--sage-soft);border-color:#bae7ea;color:var(--sage-deep)}
+.share{border-radius:12px;background:#fff;border-color:#e3e8f3;box-shadow:0 4px 14px rgba(31,41,64,.04)}
+.share button{font-weight:700}.share button[aria-pressed=true]{background:linear-gradient(135deg,var(--hero-b),var(--sage-deep));color:#fff}
+.hint{font-size:12px;color:var(--ink-3);margin-top:8px;line-height:1.6}
+.btn{
+  border:0;border-radius:12px;padding:11px 16px;font-size:13px;font-weight:700;letter-spacing:.01em;color:#fff;
+  background:linear-gradient(135deg,var(--hero-a),#4b7fff);box-shadow:0 12px 20px rgba(108,99,255,.22);
+  transition:transform .16s ease, box-shadow .16s ease, filter .16s ease
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 15px 26px rgba(108,99,255,.28);filter:saturate(1.03)}
+.btn.ghost{background:#fff;color:var(--ink);border:1px solid var(--line);box-shadow:0 8px 18px rgba(31,41,64,.05)}
+.btn.warn{background:linear-gradient(135deg,#ff7b8c,var(--alert))}
+.entry{border-color:#ebeff7;padding:12px 0;font-size:14px}.msg.ai{background:linear-gradient(135deg,#f6f9ff,#eefbfb);border:1px solid #e2ecf7;box-shadow:0 8px 16px rgba(31,41,64,.04)}
+.msg.me{background:linear-gradient(135deg,var(--hero-b),var(--sage-deep));color:#fff;box-shadow:0 10px 18px rgba(21,161,168,.18)}
+.sys{background:#fff6df;color:#7b5a1d;border:1px solid #f3dfa6;padding:5px 11px}
+.qr button{border-color:#c5eff0;color:var(--sage-deep);background:#fff;border-radius:999px;font-weight:700}
+.chat-input{display:flex;gap:8px;margin-top:12px}.chat-input input{min-width:0}
+.link{border:0;background:none;color:var(--dusk);text-decoration:none;font-size:13px;padding:2px;font-weight:700}
+.link:hover{text-decoration:underline}
+.guide{padding:10px 0}
+.guide h1{font-family:var(--f-head);font-size:clamp(42px,5vw,68px);line-height:1.02;font-weight:700;max-width:14ch;color:#1d2752}
+.guide p.lead{font-size:17px;line-height:1.85;color:#61708a;max-width:60ch;margin:22px 0 30px}
+.try,.mini,.plist,.panel,.case,.sheet,.empty,.alert-banner,.topic{
+  background:var(--surface);border:1px solid rgba(220,229,243,.95);border-radius:18px;
+  box-shadow:0 18px 40px rgba(31,41,64,.07)
+}
+.try{padding:20px 22px;margin-bottom:14px;position:relative;overflow:hidden}
+.try:before,.mini:before,.panel:before,.case:before{content:"";position:absolute;left:0;right:0;top:0;height:4px;background:linear-gradient(90deg,var(--hero-a),var(--hero-b),var(--hero-c));opacity:.95}
+.try h3{font-family:var(--f-body);font-size:14px;font-weight:700;color:var(--ink)}
+.try p{font-size:13px;line-height:1.7;color:var(--ink-2)}
+.try .ex button{border:1px solid #dce3ff;background:#fbfcff;border-radius:10px;font-size:12px;color:var(--dusk);font-weight:700}
+.try .ex button:hover{background:#f2f5ff;border-color:#bfc8ff}
+.note{line-height:1.7;color:var(--ink-2)}
+.dash{grid-template-columns:235px minmax(0,1fr);gap:28px}
+.plist{padding:14px;position:sticky;top:95px;align-self:start}
+.plist h3{font-family:var(--f-body);font-weight:700;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);margin-bottom:8px;padding:8px 10px}
+.pbtn{padding:13px 12px;transition:.18s;border-radius:13px}.pbtn:hover{background:#f4f8ff}
+.pbtn[aria-current=true]{background:linear-gradient(135deg,#eef4ff,#f0fffd);border:1px solid #dbe9fb;box-shadow:0 8px 18px rgba(31,41,64,.06)}
+.pbtn b{font-size:14px}.pbtn span{font-size:12px;color:var(--ink-3)}.pbtn .dot{background:var(--alert)}
+.phead{padding:4px 0 12px;align-items:flex-start}.phead h1{font-size:42px;font-weight:700;color:#1d2752}.phead .small{font-size:12px;color:var(--ink-3)}
+.alert-banner{border-color:#ffd0d7;background:linear-gradient(135deg,#fff8f9,#ffeef1);padding:16px 18px;position:relative;overflow:hidden}
+.alert-banner h3{color:var(--alert)}.alert-banner blockquote{background:#fff;border:1px solid #ffe0e5;border-radius:12px}
+.gap{background:linear-gradient(135deg,#202b53,#0d7680);border-radius:22px;padding:24px 26px 18px;position:relative;overflow:hidden;box-shadow:0 24px 45px rgba(24,40,82,.22)}
+.gap:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 20%, rgba(255,255,255,.12), transparent 20%), radial-gradient(circle at 20% 100%, rgba(255,255,255,.09), transparent 24%)}
+.gap-head h2{font-family:var(--f-head);font-size:26px;font-weight:700}.gap-head .legend{color:#d9e6ff}.gap .cap{color:#c7def0}.grid{gap:22px;grid-template-columns:1.2fr 1fr}.right-col{gap:22px}
+.panel{padding:23px 25px;position:relative;overflow:hidden}.panel h2{font-size:24px;color:#1d2752}.panel .sub{font-size:12px;line-height:1.7;color:var(--ink-3);margin:5px 0 16px}
+.ins{padding:15px 0;border-color:#ebeff7}.ins p{line-height:1.75}
+.topic{border-color:#e5ecfa;background:linear-gradient(180deg,#ffffff,#fbfdff);border-radius:14px;padding:14px;position:relative;overflow:hidden}
+.topic h3{font-family:var(--f-body);font-weight:700;font-size:14px}.topic-add input{background:#fff}
+.badge{border-radius:999px;font-weight:700;padding:3px 9px}.b-early{background:#fff2df;color:#996526}.b-pattern{background:#e9fbfb;color:#0b7280}
+.locked{background:#f6f9ff;border-radius:12px;border:1px solid #e2e9f6;padding:10px 12px}
+.case{padding:20px;position:relative;overflow:hidden}.case.urgent{border-left:0}.case.urgent:after{content:"";position:absolute;inset:auto 0 0 0;height:5px;background:linear-gradient(90deg,#ff95a4,var(--alert))}
+.case blockquote{background:#f7faff;border:1px solid #e8edf7;border-radius:12px}.status{border-radius:999px;font-weight:700}.status.open{background:#ffecef;color:var(--alert)}.status.done{background:#e9fbfb;color:var(--sage-deep)}
+.empty{border-radius:18px;background:rgba(255,255,255,.7);border:1px dashed #dce5f3;padding:28px;color:var(--ink-3);text-align:center}
+.sheet{background:#fff;border-radius:22px;padding:22px 24px}.modal{background:rgba(24,35,68,.5)}.toast{background:#1d2752;border-radius:12px;box-shadow:0 12px 26px rgba(31,41,64,.28)}
+.chat-demo{background:linear-gradient(135deg,#fff4cf,#fff8e7);border:1px solid #f3dfa6;color:#7b5a1d;padding:11px 12px;border-radius:12px;font-size:12px;position:sticky;top:0;z-index:3;margin-bottom:12px;line-height:1.55;box-shadow:0 8px 18px rgba(201,130,43,.1)}
+.mini{background:linear-gradient(180deg,#ffffff,#fafcff);padding:15px 16px;margin:12px 0;position:relative;overflow:hidden}.mini p{font-size:13px;margin:6px 0;color:var(--ink-2)}
+.checkgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.checkgrid label{font-size:12px;display:grid;gap:4px;color:var(--ink-2);font-weight:600}
+.metricgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.metric{padding:14px;background:linear-gradient(135deg,#eef3ff,#ecfcfb);border:1px solid #dce9f8;border-radius:16px;font-size:12px;box-shadow:0 10px 24px rgba(31,41,64,.05)}
+.metric strong{display:block;font-size:26px;font-family:var(--f-head);color:#1d2752}
+.weekrow{display:grid;grid-template-columns:46px 1fr 34px;gap:10px;align-items:center;font-size:12px;margin:10px 0;font-weight:600;color:var(--ink-2)}
+.weekbar{height:11px;border-radius:999px;background:#e6edf8;overflow:hidden;box-shadow:inset 0 1px 3px rgba(31,41,64,.08)}
+.weekbar i{display:block;height:100%;background:linear-gradient(90deg,var(--hero-a),var(--hero-b));border-radius:999px}
+.activity{border-top:1px solid #edf1f8;padding:12px 0}.activity:first-child{border-top:0}.activity b{display:block;margin-bottom:4px}.activity button{margin-top:8px}
+.modal .sheet{max-height:90vh;overflow:auto}.ph-pane input[type=checkbox]{accent-color:var(--hero-a)}
+::-webkit-scrollbar{width:10px;height:10px}::-webkit-scrollbar-thumb{background:#d6def0;border-radius:999px}::-webkit-scrollbar-track{background:transparent}
+@media(max-width:1050px){.patient-wrap{grid-template-columns:370px minmax(0,1fr);gap:34px}.guide h1{font-size:50px}}
+@media(max-width:850px){.patient-wrap,.dash,.grid,.safety{grid-template-columns:1fr}.patient-wrap{gap:40px}.phone{width:min(100% - 20px,400px);max-width:400px;margin:10px auto}.guide{order:-1}.guide h1{font-size:clamp(40px,8vw,58px)}.top{padding:14px 18px}.roles{order:5;width:100%;overflow-x:auto;justify-content:flex-start;margin-left:0}.demo-pill{order:4}.brand span{display:none}main{padding:25px 18px 60px}.right-col{gap:16px}.plist{position:static}}
+@media(max-width:480px){.top{gap:12px}.brand b{font-size:27px}.demo-pill{font-size:10px}.roles button{font-size:12px;white-space:nowrap;padding:8px 10px}.phone{height:720px}.guide h1{font-size:43px}.guide p.lead{font-size:14px}.panel{padding:18px}.phead h1{font-size:34px}.metricgrid,.checkgrid{grid-template-columns:1fr}}
+
+
+/* Role-specific visual system */
+:root{--ink:#18243b;--ink-2:#48566e;--ink-3:#626f84;--dusk:#5143bc;--sage-deep:#08766e;--hero-a:#5143bc;--hero-b:#087f79;--line:#dce4ef}
+body{background:#f3f5fb}.top{background:#fff;box-shadow:0 4px 24px #1525470b}.brand b{color:#5143bc;background:none}.roles button[aria-selected=true]{background:#5143bc}.demo-pill{box-shadow:none}.reset{box-shadow:none}
+main{max-width:1460px}.patient-wrap{align-items:start;grid-template-columns:minmax(340px,440px) minmax(0,1fr);gap:clamp(30px,6vw,90px)}
+#v-patient{--hero-a:#5143bc;--hero-b:#087f79;--sage-deep:#08766e}.phone{height:810px;background:#f9f8ff;box-shadow:0 0 0 7px #262640,0 25px 65px #29234c30}.phone:before{display:none}.ph-head{background:linear-gradient(120deg,#4333a5,#6659ce);color:#fff;padding:30px 22px 25px;border:0;min-height:116px}.ph-head .hi{font-size:32px}.ph-head .muted{color:#f0edff}.ph-head:after{content:'L';display:grid;place-items:center;width:46px;height:46px;border-radius:50%;background:#ffffff28;border:1px solid #ffffff66;font-size:22px;font-weight:700;flex-shrink:0}.ph-tabs{background:#eeebfc;border:0;margin:12px 14px 0;gap:4px}.ph-tabs button{color:#4e4869;display:flex;flex-direction:column;align-items:center;gap:4px;padding:8px 2px}.ph-tabs button svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:1.75}.ph-tabs button[aria-selected=true]{color:#4937af;background:#fff}.ph-body{position:relative;padding:18px 19px 24px}.prompt{background:#e9f7f3;border:1px solid #c7e9df;color:#20594f;box-shadow:none}.prompt b{color:#20594f}.moods button{display:grid;gap:4px;place-items:center;min-height:59px;background:#fff}.moods button:before{font-size:20px;line-height:1;content:attr(data-face)}.moods button[aria-pressed=true]{background:#5143bc;box-shadow:none}.btn{background:#5143bc;box-shadow:0 5px 12px #5143bc20}.btn.warn{background:#ad3549;box-shadow:none}.btn.ghost{color:#4236a1}.msg.me{background:#08766e}.msg.ai{background:#fff;border:1px solid #e1dfef}.metric{background:#ede9ff;border:0;box-shadow:none}.metric:nth-child(2n){background:#dbf4ed}.metric:nth-child(3n){background:#fff0df}.metric strong{font-size:23px}.mini{box-shadow:none;border:1px solid #e4e1f0}.mini:before{display:none}.chat-demo{background:#fff1d8;color:#725019;box-shadow:none}.guide{padding:6px 0}.guide-hero{background:#e9e5ff;border-radius:30px;padding:clamp(24px,4vw,46px);position:relative;overflow:hidden;margin-bottom:22px}.guide-hero:after{content:'';position:absolute;right:-85px;bottom:-105px;width:250px;height:250px;border:40px solid #d7cef9;border-radius:50%;pointer-events:none}.guide-hero>*{position:relative;z-index:1}.eyebrow{font-size:12px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;color:#4d3cb1;margin-bottom:12px}.guide h1{font-size:clamp(36px,4.3vw,64px);max-width:16ch;color:#2c225f}.guide p.lead{color:#504969;margin:18px 0 0;font-size:16px}.try{box-shadow:0 5px 20px #28214f09;padding:18px 20px 18px 68px}.try:before{display:none}.try:after{content:attr(data-step);position:absolute;left:19px;top:20px;background:#e9e5ff;color:#4d3cb1;border-radius:13px;width:34px;height:34px;display:grid;place-items:center;font-weight:800}.try:nth-of-type(3):after{background:#ffe9df;color:#9a472f}.try:nth-of-type(4):after{background:#d9f5ee;color:#08766e}
+#v-clinician{--hero-a:#146a91;--hero-b:#08766e;--dusk:#146a91}.dash{grid-template-columns:235px minmax(0,1fr);gap:26px}.plist{background:#142b48;color:white;border:0;border-radius:22px;padding:20px 14px;box-shadow:0 16px 35px #142b4820}.plist h3{color:#b7cadd}.pbtn{color:#fff;padding:14px 10px;display:grid;grid-template-columns:37px 1fr;column-gap:9px;align-items:center}.pbtn:before{content:attr(data-initial);grid-row:span 2;background:#34516b;border-radius:11px;display:grid;place-items:center;width:34px;height:34px;font-weight:700}.pbtn span{color:#c5d5e5}.pbtn[aria-current=true]{color:#132a46;background:#d6f4ed;border:0}.pbtn[aria-current=true] span{color:#385764}.pbtn[aria-current=true]:before{background:#08766e;color:white}.pbtn:hover:not([aria-current=true]){background:#233e5e}.phead h1{color:#18344f}.phead{align-items:center}.phead .small{color:#53677e}.workspace-label{display:inline-flex;background:#dcecf8;color:#175578;border-radius:8px;padding:5px 11px;font-size:12px;font-weight:700;margin-bottom:8px}.overview{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 20px}.overview>div{background:#fff;border:1px solid #dce4ef;padding:16px;border-radius:16px;min-width:0}.overview strong{display:block;font-size:27px;color:#173e60;line-height:1.3}.overview span{font-size:12px;color:#53677e}.overview>div:nth-child(2){background:#e1f5f1;border-color:#d0ebe5}.overview>div:nth-child(3){background:#f0ecff;border-color:#e4ddfa}.gap{background:#15364f;box-shadow:0 12px 28px #173e6020}.panel{box-shadow:0 5px 18px #173e6009;border-radius:17px}.panel:before{background:#1a8b95;height:3px}.panel h2{color:#173e60;font-size:21px}.topic{box-shadow:none}.topic-add input{min-width:0}.grid>*{min-width:0}#v-clinician .btn{background:#146a91}#v-clinician .btn.ghost{background:white;color:#146a91}
+#v-safety{--hero-a:#334b68;--dusk:#334b68}.safety-hero{background:#23374f;color:#fff;border-radius:22px;padding:24px 28px;margin-bottom:20px}.safety-hero h1{color:#fff!important}.safety-hero .small{color:#d7e3ee}.safety-hero .workspace-label{background:#435b76;color:#fff}.safety{grid-template-columns:minmax(0,1fr) 340px}.protocol{background:#eef3f9}.protocol:before{background:#526981}.case:before{background:#526981}.case.urgent:before{background:#ad3549}.case.urgent:after{display:none}.case.urgent{border-left:4px solid #ad3549}.status.open{color:#9c2440}.status.done{color:#08685e}#v-safety .btn:not(.warn):not(.ghost){background:#334b68}.empty{padding:44px 24px;background:#fff}.alert-banner{background:#fff0f2;border:1px solid #efc1ca}.alert-banner h3{color:#a12d45}
+@media(max-width:980px){.patient-wrap{grid-template-columns:1fr}.guide{order:-1}.phone{width:min(100% - 16px,440px);max-width:440px;margin:auto}.dash,.safety{grid-template-columns:1fr}.plist{position:static}.grid{grid-template-columns:1fr}.top{position:relative}.guide-hero{padding:26px}.overview{gap:8px}}@media(max-width:480px){main{padding:16px 12px 40px}.phone{height:760px}.overview{grid-template-columns:1fr}.ph-body{padding:14px}.guide h1{font-size:37px}.roles{border-radius:12px}.roles button{white-space:nowrap}.guide-hero:after{opacity:.5}.safety-hero{padding:18px}.checkgrid,.metricgrid{grid-template-columns:1fr 1fr}.phead h1{font-size:30px}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><b>Numa AI</b><span>Support between mental health sessions</span></div>
+  <span class="demo-pill">Interactive demo • Fictional data • No live services</span>
+  <nav class="roles" role="tablist" aria-label="Choose a view">
+    <button role="tab" aria-selected="true" data-view="patient">Patient app</button>
+    <button role="tab" aria-selected="false" data-view="clinician">Clinician dashboard</button>
+    <button role="tab" aria-selected="false" data-view="safety">Safety team <span id="safetyCount"></span></button>
+  </nav>
+  <button class="reset" id="resetBtn">Reset demo</button>
+</header>
+
+<main>
+<!-- ======================= PATIENT ======================= -->
+<section class="view on" id="v-patient" aria-label="Patient app">
+  <div class="patient-wrap">
+    <div class="phone">
+      <div class="ph-head">
+        <div><div class="hi">Hi Lina</div><div class="small muted">Sample patient • Dr. Rana Haddad • 17 Nov</div></div>
+      </div>
+      <div class="ph-tabs" role="tablist" aria-label="Patient sections">
+        <button role="tab" aria-selected="true" data-pane="journal"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3h14v18H5z M9 3v18 M12 8h4 M12 12h4"/></svg>Journal</button>
+        <button role="tab" aria-selected="false" data-pane="talk"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 4h18v13h-9l-5 4v-4H3z M7 9h10 M7 12h6"/></svg>Talk</button>
+        <button role="tab" aria-selected="false" data-pane="week"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V4 M4 20h16 M8 16v-4 M12 16V8 M16 16V5"/></svg>My week</button>
+<button role="tab" aria-selected="false" data-pane="support"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20S3 15 3 9a5 5 0 0 1 9-3 5 5 0 0 1 9 3c0 6-9 11-9 11z"/></svg>Support</button>
+      </div>
+      <div class="ph-body">
+        <!-- journal -->
+        <div class="ph-pane on" id="p-journal">
+          <div class="prompt"><b>Dr. Rana asked you to reflect on:</b> <span id="promptTopic">your friendships and time with friends</span></div>
+          <label class="sr" for="entryText">Journal entry</label>
+          <textarea id="entryText" dir="auto" placeholder="اكتبي عن يومك… / Write about your day…"></textarea>
+          <div class="lbl">How is your mood?</div>
+          <div class="moods" id="moods">
+            <button aria-pressed="false" data-m="1" data-face="🙁">1 Low</button><button aria-pressed="false" data-m="2" data-face="😕">2</button><button aria-pressed="true" data-m="3" data-face="😐">3 OK</button><button aria-pressed="false" data-m="4" data-face="🙂">4</button><button aria-pressed="false" data-m="5" data-face="😊">5 Great</button>
+          </div>
+          <div class="mini"><h3>Daily check in</h3><p class="small muted">Optional ratings from your own experience.</p><div class="checkgrid"><label>Stress (1–5)<select id="stress"><option value="">Not recorded</option></select></label><label>Anxiety (1–5)<select id="anxiety"><option value="">Not recorded</option></select></label><label>Energy (1–5)<select id="energy"><option value="">Not recorded</option></select></label><label>Sleep (hours)<input id="sleepHours" type="number" min="0" max="24" step="0.1" placeholder="Optional"></label><label>Sleep quality (1–5)<select id="sleepQuality"><option value="">Not recorded</option></select></label></div></div><div class="lbl">What was part of today?</div>
+          <div class="chips" id="tags">
+            <button class="chip" aria-pressed="false" data-t="friends">Friends</button>
+            <button class="chip" aria-pressed="false" data-t="family">Family</button>
+            <button class="chip" aria-pressed="false" data-t="uni">University</button>
+            <button class="chip" aria-pressed="false" data-t="exercise">Exercise</button>
+            <button class="chip" aria-pressed="false" data-t="coffee">Coffee</button>
+            <button class="chip" aria-pressed="false" data-t="sleep">Slept badly</button>
+          </div>
+          <div class="lbl">Who can read the full entry?</div>
+          <div class="share" id="share">
+            <button aria-pressed="true" data-s="private">Only me</button>
+            <button aria-pressed="false" data-s="shared">Me and Dr. Rana</button>
+          </div>
+          <div class="hint">Only entries and summaries you choose to share appear in the clinician view. A concerning phrase may show support options, but never sends private text automatically.</div>
+          <button class="btn block" id="saveEntry">Save entry</button>
+          <div class="lbl" style="margin-top:20px">Your recent entries</div>
+          <div id="myEntries"></div>
+        </div>
+        <!-- talk -->
+        <div class="ph-pane" id="p-talk">
+          <div class="chat-demo" role="note"><strong>Demo conversation</strong><br>No AI model is connected. Replies are selected from written examples. No one monitors this chat.</div><div class="chat" id="chat" aria-live="polite"></div>
+          <div class="chat-input">
+            <label class="sr" for="chatText">Message</label>
+            <input id="chatText" placeholder="اكتبي رسالة…" dir="auto">
+            <button class="btn" id="sendChat">Send</button>
+          </div>
+          <div class="chat-tools">
+            <button class="link" id="skipMonday">Try exam follow up</button>
+            <button class="link" id="reportChat">Report this chat</button>
+          </div>
+        </div>
+        <!-- week -->
+        <div class="ph-pane" id="p-week">
+          <h3>Your week, in your words</h3>
+          <p class="small muted">Your own records and optional wellness activities. Only shared records appear in the clinician dashboard.</p>
+          <div id="tracker"></div><div id="myInsights"></div>
+<div class="mini"><h3>My wellness plan</h3><p class="small muted">Choose what feels useful. Your clinician can help you adapt this plan.</p><div id="planList"></div></div>
+<button class="btn ghost block" id="exportWeek">Export my weekly summary</button>
+</div><div class="ph-pane" id="p-support"><h3>Find the support you need</h3><p class="small muted">You choose what happens next. Numa does not assess your condition or decide your treatment.</p><div class="mini"><h3>Talk to your clinician</h3><p>Prepare a message or request a session with Dr. Rana.</p><textarea id="helpNote" placeholder="What would you like to discuss? (fictional example only)"></textarea><label class="small"><input type="checkbox" id="helpConsent"> Share this message in the demo dashboard</label><button class="btn block" id="requestHelp">Create demo request</button><div id="helpStatus" class="small"></div></div><div class="mini"><h3>Tools for everyday wellbeing</h3><div id="activities"></div></div><div class="mini"><h3>Need urgent support?</h3><p>If you may hurt yourself or someone else, or are in immediate danger, seek emergency help now. Do not wait for a reply here.</p><button class="btn warn block" id="openResources">View crisis resources</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="guide">
+      <div class="guide-hero"><div class="eyebrow">Your space between sessions</div><h1>The weeks between sessions, finally visible</h1>
+      <p class="lead">Lina records how she feels, talks through everyday concerns in Arabic or English, and chooses what to share with her clinician. Explore the sample workflow from daily reflection to human review.</p></div>
+
+      <div class="try" data-step="01">
+        <h3>1 · Write a journal entry</h3>
+        <p>Tap an example to fill the entry, pick a mood, then save. The clinician dashboard updates straight away.</p>
+        <div class="ex">
+          <button data-fill="رحت مع صحابي عالقهوة بعد المحاضرة، كان حلو وضحكنا كثير" data-tags="friends,coffee" data-mood="4">An everyday entry</button>
+          <button data-fill="بدي أموت من الضحك، رزان حكتلي قصة بتجنن" data-tags="friends" data-mood="5">Dark-sounding, but harmless</button>
+        </div>
+      </div>
+      <div class="try" data-step="02">
+        <h3>2 · See how a risk signal is handled</h3>
+        <p>Try a concerning example. The demo displays support resources and lets Lina choose whether to create a sample human review request.</p>
+        <div class="ex">
+          <button data-fill="تعبت من كل شي، ما في داعي أكمل. ما حدا رح يفرق معه إذا اختفيت" data-tags="" data-mood="1">A concerning entry</button>
+        </div>
+      </div>
+      <div class="try" data-step="03">
+        <h3>3 · Talk to Numa</h3>
+        <p>Open the Talk tab. Try typing about exams, family, sleep or friends in Arabic or English. The demo uses a varied set of written replies. Try the support tab to request a sample session.</p>
+      </div>
+      <p class="note">Prototype scope: no AI model, live clinician, wearable connection or clinical validation. Use fictional data only. The planned product requires specialist review, secure access, consent and validated safety procedures.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= CLINICIAN ======================= -->
+<section class="view" id="v-clinician" aria-label="Clinician dashboard">
+  <div class="dash">
+    <aside class="plist" aria-label="Patients">
+      <h3>My patients</h3>
+      <button class="pbtn" data-initial="LH" aria-current="true"><b>Lina H. <span class="dot" id="linaDot" hidden></span></b><span>Next session Tue 17 Nov</span></button>
+      <button class="pbtn" data-initial="OK" data-other><b>Omar K.</b><span>Next session Wed 18 Nov</span></button>
+      <button class="pbtn" data-initial="SM" data-other><b>Sara M.</b><span>Next session Thu 19 Nov</span></button>
+    </aside>
+
+    <div>
+      <div class="phead">
+        <div><div class="workspace-label">Clinical workspace</div><div class="small muted">Dr. Rana Haddad · Session preparation</div><h1>Lina H., 24</h1></div>
+        <div class="small muted">Last session Tue 3 Nov · Next session Tue 17 Nov</div>
+      </div>
+
+      <div class="overview"><div><span>Patient workspace</span><strong>Lina H.</strong></div><div><span>Review approach</span><strong>Human led</strong></div><div><span>Data environment</span><strong>Demo</strong></div></div><div class="alert-banner" id="alertBanner" role="alert">
+        <h3>Patient requested human review</h3>
+        <div class="small">Sample request only. A qualified clinician reviews the context and decides what to do. No notification was sent.</div>
+        <blockquote id="alertQuote"></blockquote>
+        <div class="acts">
+          <button class="btn" id="ackAlert">Acknowledge review request</button>
+          <button class="btn ghost" id="noReply">Simulate handoff to safety team</button>
+        </div>
+      </div>
+
+      <section class="gap" aria-label="Between-session timeline">
+        <div class="gap-head">
+          <h2>Since the last session</h2>
+          <div class="legend">
+            <span><i style="background:var(--night-deep)"></i>Sleep (hours)</span>
+            <span><i style="background:#fff;border-radius:50%"></i>Mood 1–5</span>
+            <span><i style="background:#7FC2B5"></i>Shared entry</span>
+            
+            
+          </div>
+        </div>
+        <div id="gapChart"></div>
+        <div class="cap">Sample sleep readings and manually entered sleep. Mood is self reported. Each column is one fictional day.</div>
+      </section>
+
+      <div class="grid">
+        <section class="panel" aria-label="Insights">
+          <h2>Insights for this session</h2>
+          <div class="sub">Descriptive summaries of shared records only. No diagnosis or clinical recommendations.</div>
+          <div id="insights"></div>
+        </section>
+        <div class="right-col">
+          <section class="panel" aria-label="Guided topics">
+            <h2>Topics you're tracking</h2>
+            <div class="sub">Write any topic in your own words. The topic appears as a reflection prompt for Lina.</div>
+            <form class="topic-add" id="topicForm">
+              <label class="sr" for="topicText">New topic</label>
+              <input id="topicText" placeholder="e.g. family pressure, sleep, studying">
+              <button class="btn" type="submit">Track</button>
+            </form>
+            <div id="topics"></div></section><section class="panel"><h2>Patient support requests</h2><p class="sub">All requests are fictional. Clinical decisions stay with qualified humans.</p><div id="clinicianRequests"></div>
+          </section>
+          <section class="panel" aria-label="Shared entries">
+            <h2>Entries Lina shared</h2>
+            <div id="sharedEntries"></div>
+            <div class="locked" id="lockedNote"></div>
+          </section>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= SAFETY TEAM ======================= -->
+<section class="view" id="v-safety" aria-label="Numa safety team">
+  <div class="phead safety-hero"><div><div class="workspace-label">Safety operations</div><div class="small muted">Numa safety team (simulation)</div><h1>Escalations and reports</h1></div></div>
+  <div class="safety">
+    <div id="cases"></div>
+    <aside class="panel protocol">
+      <h2>What reaches this team</h2>
+      <ol>
+        <li>Sample requests a human reviewer chooses to hand off.</li>
+        <li>Chats a patient explicitly chooses to report. No unrelated journal entries.</li>
+      </ol>
+      <h2 style="margin-top:16px">Proposed human review protocol</h2>
+      <ol>
+        <li>Try the treating clinician again.</li>
+        <li>Contact the patient's emergency contact if one is on file.</li>
+        <li>If there is immediate danger, call emergency services: 911 in Jordan, 999 or 998 in the UAE.</li>
+        <li>Production requires verified access controls and audit records. This demo only records sample actions.</li>
+      </ol>
+    </aside>
+  </div>
+</section>
+</main>
+
+<!-- crisis modal -->
+<div class="modal" id="crisis" role="dialog" aria-modal="true" aria-labelledby="crisisTitle">
+  <div class="sheet">
+    <h2 id="crisisTitle">You don't have to carry this alone</h2>
+    <div class="ar-block">إذا حاسة إنك ممكن تأذي حالك أو إنك بخطر مباشر، تواصلي مع الطوارئ الآن أو مع شخص موثوق قريب منك. هالمحادثة تجريبية وما في حدا بيراقبها.</div>
+    <div class="lines">
+      <a href="tel:911"><span>Emergency, Jordan</span><span>911</span></a>
+      <a href="tel:998"><span>Ambulance, UAE</span><span>998</span></a>
+      <a href="tel:999"><span>Police, UAE</span><span>999</span></a>
+    </div>
+    <p class="small muted">No clinician has been contacted. This demo is not monitored. You can explicitly choose to create a sample review request below.</p>
+    <div class="acts"><button class="btn ghost" id="closeCrisis">Close</button><button class="btn" id="shareConcern">Create sample review request</button></div>
+  </div>
+</div>
+
+<!-- report modal -->
+<div class="modal" id="report" role="dialog" aria-modal="true" aria-labelledby="reportTitle">
+  <div class="sheet">
+    <h2 id="reportTitle">Report this chat?</h2>
+    <p class="small">This creates a sample report only. No real team receives it. Preview of shared content:</p>
+    <div class="lines" id="reportItems"></div>
+    <p class="small muted">Nothing else from your journal is sent.</p>
+    <div class="acts"><button class="btn ghost" id="cancelReport">Cancel</button><button class="btn warn" id="sendReport">Send report</button></div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script>
+/* ===================== data ===================== */
+const DAYS = ["4","5","6","7","8","9","10","11","12","13","14","15","16"]; // Nov dates between sessions
+const DOW  = ["W","T","F","S","S","M","T","W","T","F","S","S","M"];
+const TODAY = 11; // index of 15 Nov
+const SEED_SLEEP = [7.1,6.8,5.2,7.4,6.9,4.6,6.2,5.0,7.6,4.8,6.5,5.4,null];
+
+let SLEEP = [...SEED_SLEEP];
+function seedEntries(){ return [
+  {d:0,mood:3,tags:["uni"],share:"private",text:"اليوم كان عادي، الجامعة متعبة شوي بس ماشي الحال."},
+  {d:1,mood:2,tags:["friends"],share:"shared",text:"صحابي طلعوا بدوني وما حدا حكالي. حسيت حالي مش مهمة إلهم."},
+  {d:2,mood:2,tags:["family"],share:"private",text:"تناقشت مع أهلي عن التخصص مرة ثانية، تعبت من نفس الحكي."},
+  {d:3,mood:4,tags:["exercise","coffee"],share:"shared",text:"رحت مشيت الصبح وشربت قهوة مع بنت خالتي، مزاجي أحسن بكثير."},
+  {d:5,mood:2,tags:["sleep","uni"],share:"private",text:"ما نمت منيح، ضليت أفكر بالامتحان لل ٣ الفجر."},
+  {d:6,mood:3,tags:["friends"],share:"shared",text:"حكيت مع رزان عن اللي صار، كانت لطيفة بس لسا حاسة في مسافة."},
+  {d:7,mood:2,tags:["uni"],share:"private",text:"عندي امتحان الثلاثاء ولسا ما درست، حاسة بضغط كبير."},
+  {d:8,mood:4,tags:["exercise"],share:"shared",text:"رجعت عالجيم اليوم وحسيت حالي خفيفة."},
+  {d:9,mood:2,tags:["sleep","uni"],share:"private",text:"Ma nemt mni7 kaman marra, w lessa bdi a5alles el madda."},
+  {d:10,mood:3,tags:["friends"],share:"shared",text:"طلعنا كشلة بعد المحاضرة، كان حلو بس ضليت ساكتة أغلب الوقت."},
+];}
+const TOPIC_MAP = [
+  {key:"friends",words:["friend","social","relationship","peer","صحاب","صديق","علاقات","اجتماع"],label:"Friends & social life"},
+  {key:"family",words:["family","parent","home","أهل","عائل","family pressure"],label:"Family"},
+  {key:"uni",words:["study","exam","uni","school","work","دراس","امتحان","جامع"],label:"Studies & exams"},
+  {key:"sleep",words:["sleep","insomnia","night","نوم"],label:"Sleep"},
+  {key:"exercise",words:["exercise","gym","walk","sport","رياض"],label:"Exercise"},
+];
+
+let state;
+function fresh(){
+  SLEEP = [...SEED_SLEEP];
+  state = {checkins:[], requests:[], activity:[], lastIntent:null, replyCounts:{}, concern:null, entries:seedEntries(), topics:[{text:"Relationships with friends", key:"friends"}],
+           alerts:[], cases:[], chatLog:[], chatStep:"start", mood:3, tags:[], share:"private"};
+}
+fresh();
+
+/* ===================== helpers ===================== */
+const $ = s => document.querySelector(s);
+const $$ = s => [...document.querySelectorAll(s)];
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("on"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("on"),2600); }
+const avg = a => a.length ? a.reduce((x,y)=>x+y,0)/a.length : null;
+const tagName = {friends:"Friends",family:"Family",uni:"University",exercise:"Exercise",coffee:"Coffee",sleep:"Slept badly"};
+
+/* ===================== risk check (illustrative rules only) ===================== */
+// Production: an LLM reads the whole entry in context. Here: a few rules so the demo can show the flow.
+const RISK = [/انتحر|انتحار|أنتحر/, /(أنهي|انهي) حياتي/, /ما في داعي (أكمل|اكمل|أعيش|اعيش)/, /ما حدا (رح|راح) يفرق معه/,
+              /(أذي|اذي|أأذي) (نفسي|حالي)/, /بدي (أموت|اموت)$/, /kill myself|end it all|suicid|ma fi da3i akammel/i];
+const FIGURATIVE = /(أموت|اموت|أنتحر|انتحر)\s+من\s+(ال|هال)?\S+/; // "بدي أموت من الضحك" / "رح أنتحر من هالدكتور"
+const URGENT = /حاولت|خطة|حبوب|الليلة|tonight|attempt|plan/i;
+function riskCheck(text){
+  const sentences = text.split(/[.!؟?،,\n]+/).map(s=>s.trim()).filter(Boolean);
+  let hit = false, urgent = false;
+  for (const s of sentences){
+    if (FIGURATIVE.test(s) && !/(حياتي|نفسي|حالي)/.test(s)) continue;
+    if (RISK.some(r=>r.test(s))) { hit = true; if (URGENT.test(text)) urgent = true; }
+  }
+  // two weaker phrases together also count
+  if (!hit && /تعبت من كل شي/.test(text) && /اختفي|أختفي/.test(text)) hit = true;
+  return hit ? "example" : null;
+}
+
+/* ===================== view switching ===================== */
+$$(".roles button").forEach(b=>b.addEventListener("click",()=>showView(b.dataset.view)));
+function showView(v){
+  $$(".roles button").forEach(b=>b.setAttribute("aria-selected", b.dataset.view===v));
+  $$(".view").forEach(s=>s.classList.toggle("on", s.id==="v-"+v));
+  window.scrollTo({top:0});
+}
+$$(".ph-tabs button").forEach(b=>b.addEventListener("click",()=>{
+  $$(".ph-tabs button").forEach(x=>x.setAttribute("aria-selected", x===b));
+  $$(".ph-pane").forEach(p=>p.classList.toggle("on", p.id==="p-"+b.dataset.pane));
+  if (b.dataset.pane==="talk" && !state.chatLog.length) startChat();
+}));
+$$("[data-other]").forEach(b=>b.addEventListener("click",()=>toast("This demo includes full sample data for Lina only.")));
+
+/* ===================== journal ===================== */
+$("#moods").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  state.mood=+b.dataset.m; $$("#moods button").forEach(x=>x.setAttribute("aria-pressed",x===b)); });
+$("#tags").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  const on = b.getAttribute("aria-pressed")!=="true"; b.setAttribute("aria-pressed",on);
+  state.tags = $$("#tags button").filter(x=>x.getAttribute("aria-pressed")==="true").map(x=>x.dataset.t); });
+$("#share").addEventListener("click",e=>{ const b=e.target.closest("button"); if(!b) return;
+  state.share=b.dataset.s; $$("#share button").forEach(x=>x.setAttribute("aria-pressed",x===b)); });
+
+$$("[data-fill]").forEach(b=>b.addEventListener("click",()=>{
+  $$(".ph-tabs button")[0].click();
+  $("#entryText").value=b.dataset.fill;
+  const tags=b.dataset.tags?b.dataset.tags.split(","):[];
+  $$("#tags button").forEach(x=>x.setAttribute("aria-pressed",tags.includes(x.dataset.t))); state.tags=tags;
+  const m=+b.dataset.mood; state.mood=m; $$("#moods button").forEach(x=>x.setAttribute("aria-pressed",+x.dataset.m===m));
+  $("#entryText").focus();
+}));
+
+$("#saveEntry").addEventListener("click",()=>{
+  const text=$("#entryText").value.trim();
+  if(!text && !["stress","anxiety","energy","sleepHours","sleepQuality"].some(id=>$("#"+id).value!=="")){ /* Mood alone can be recorded. */ }
+  if(!$("#sleepHours").checkValidity()){ $("#sleepHours").reportValidity(); return; }
+  const risk = riskCheck(text);
+  const entry={d:TODAY,mood:state.mood,tags:[...state.tags],share:state.share,text,risk, isNew:true};
+  state.entries.push(entry);
+  const metrics={}; for(const id of ['stress','anxiety','energy','sleepHours','sleepQuality']){const el=$('#'+id);metrics[id]=el.value===''?null:Number(el.value);el.value='';}
+  state.checkins.push({...metrics,d:TODAY,mood:state.mood,share:state.share});
+  if(metrics.sleepHours!==null) SLEEP[TODAY]=metrics.sleepHours;
+  $("#entryText").value=""; $$("#tags button").forEach(x=>x.setAttribute("aria-pressed","false")); state.tags=[];
+  if(risk){
+    state.concern={text,source:"journal"};
+    $("#crisis").classList.add("on"); $("#closeCrisis").focus();
+  } else {
+    toast(entry.share==="shared" ? "Entry saved and shared with Dr. Rana." : "Entry saved. Only you can read it.");
+  }
+  renderAll();
+});
+$("#closeCrisis").addEventListener("click",()=>{ $("#crisis").classList.remove("on"); state.concern=null; });
+
+function renderMyEntries(){
+  const list=[...state.entries].reverse().slice(0,6);
+  $("#myEntries").innerHTML=list.map(e=>`
+    <div class="entry">
+      <div class="meta"><span>${DOW[e.d]} ${DAYS[e.d]} Nov · mood ${e.mood}</span>
+      <span class="${e.risk?'tag-risk':e.share==='shared'?'tag-shared':'tag-private'}">${e.share==='shared'?'Shared in demo':'Only me'}</span></div>
+      <div dir="auto" class="ar" style="text-align:start">${esc(e.text)}</div>
+    </div>`).join("");
+}
+
+/* ===================== insights (computed from the data) ===================== */
+function computeInsights(shared=false){
+ const E=state.entries.filter(e=>!shared||e.share==='shared'), out=[];
+ const days=[...new Set(E.map(e=>e.d))];
+ if(E.length) out.push({kind:'pattern',text:`Recorded mood averaged ${avg(E.map(e=>e.mood)).toFixed(1)} out of 5.`,ev:`${E.length} records across ${days.length} days`});
+ for(const [key,label] of Object.entries(tagName)){const es=E.filter(e=>e.tags.includes(key));if(es.length)out.push({kind:es.length<3?'early':'pattern',text:`${label} was selected in ${es.length} records.`,ev:`${new Set(es.map(e=>e.d)).size} distinct days; self reported tags`});}
+ const C=state.checkins.filter(c=>!shared||c.share==='shared');
+ for(const [k,label] of Object.entries({stress:'Stress',anxiety:'Anxiety',energy:'Energy',sleepHours:'Sleep hours',sleepQuality:'Sleep quality'})){const vs=C.map(c=>c[k]).filter(v=>v!==null);if(vs.length)out.push({kind:'early',text:`${label}: average ${avg(vs).toFixed(1)}.`,ev:`${vs.length} manual records; no clinical interpretation`});}
+ return out;
+}
+function renderInsights(){
+ const html=ins=>ins.map(i=>`<div class="ins"><p>${i.text}</p><div class="ev">Based on ${i.ev}</div></div>`).join('')||'<p class="muted">No shared records yet.</p>';
+ $('#insights').innerHTML=html(computeInsights(true)); $('#myInsights').innerHTML=html(computeInsights()); renderTracker();
+}
+
+/* ===================== between-sessions chart ===================== */
+function renderGap(){
+  const W=900,H=210, padL=34,padR=10,top=16,base=150;
+  const n=DAYS.length, cw=(W-padL-padR)/n;
+  const sy=h=>base-(h/9)*(base-top);
+  const my=m=>base-((m-0.5)/5)*(base-top);
+  let g=`<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Sleep, mood and entries for each day since the last session">`;
+  [3,6,9].forEach(h=>{ g+=`<line x1="${padL}" x2="${W-padR}" y1="${sy(h)}" y2="${sy(h)}" stroke="rgba(255,255,255,.09)"/><text x="${padL-8}" y="${sy(h)+4}" fill="#8FA1B2" font-size="11" text-anchor="end">${h}h</text>`; });
+  // sleep bars
+  SEED_SLEEP.forEach((h,i)=>{ if(h==null) return; const x=padL+i*cw+cw*0.22, w=cw*0.56;
+    g+=`<rect x="${x}" y="${sy(h)}" width="${w}" height="${base-sy(h)}" rx="5" fill="${h<6?'#8C98CF':'#5B6797'}"><title>${DAYS[i]} Nov: ${h} h sleep</title></rect>`; });
+  // mood line (avg per day)
+  const pts=[];
+  for(let i=0;i<n;i++){ const ms=state.entries.filter(e=>e.d===i&&e.share==="shared").map(e=>e.mood); if(ms.length) pts.push([padL+i*cw+cw/2, my(avg(ms)), avg(ms), i]); }
+  if(pts.length>1) g+=`<polyline points="${pts.map(p=>p[0]+","+p[1]).join(" ")}" fill="none" stroke="#fff" stroke-width="2" stroke-linejoin="round" opacity=".85"/>`;
+  pts.forEach(p=>{ g+=`<circle cx="${p[0]}" cy="${p[1]}" r="5" fill="#fff"><title>${DAYS[p[3]]} Nov: mood ${p[2].toFixed(1)}</title></circle>`; });
+  // entry markers
+  for(let i=0;i<n;i++){
+    const es=state.entries.filter(e=>e.d===i&&e.share==="shared").slice(0,3);
+    es.forEach((e,k)=>{ const c='#7FC2B5';
+      g+=`<rect x="${padL+i*cw+cw/2-9+k*0}" y="${base+10+k*9}" width="18" height="6" rx="3" fill="${c}"/>`; });
+    const isToday=i===TODAY;
+    g+=`<text x="${padL+i*cw+cw/2}" y="${H-14}" fill="${isToday?'#fff':'#8FA1B2'}" font-size="11.5" font-weight="${isToday?700:400}" text-anchor="middle">${DOW[i]} ${DAYS[i]}</text>`;
+    if(isToday) g+=`<text x="${padL+i*cw+cw/2}" y="${H-1}" fill="#fff" font-size="10.5" text-anchor="middle">today</text>`;
+  }
+  g+=`<text x="${W-padR}" y="${top+2}" fill="#8FA1B2" font-size="11" text-anchor="end">next session Tue 17 →</text>`;
+  g+="</svg>";
+  $("#gapChart").innerHTML=g;
+}
+
+/* ===================== guided topics ===================== */
+function matchTopic(text){
+  const t=text.toLowerCase();
+  return TOPIC_MAP.find(m=>m.words.some(w=>t.includes(w))) || null;
+}
+function topicSummary(key){
+  const es=state.entries.filter(e=>e.tags.includes(key)&&e.share==="shared");
+  const priv=es.filter(e=>e.share==="private").length;
+  const moods=es.map(e=>e.mood);
+  const lines={
+    friends:"Felt left out by friends at first; later talked it through with one friend and joined group outings, but describes staying quiet.",
+    family:"One recurring disagreement with family about her study path; describes feeling tired of the same conversation.",
+    uni:"Exam on Tue 17 Nov is the main stressor; has not finished the material and links it to poor sleep.",
+    sleep:"Writes about lying awake thinking about exams; short nights match lower mood days.",
+    exercise:"Walking and the gym appear on better days; too few days yet to call it a pattern."
+  };
+  if(!es.length) return {count:0,text:"Not mentioned yet since you started tracking this topic."};
+  return {count:es.length, priv, mood:avg(moods), text:`${es.length} shared records include this topic. Discuss their meaning with Lina.`};
+}
+function renderTopics(){
+  $("#topics").innerHTML=state.topics.map(t=>{
+    if(!t.key) return `<div class="topic"><h3>${esc(t.text)}</h3><div class="ev">No mapped tags for this topic yet. A clinician can discuss it at the next session.</div></div>`;
+    const s=topicSummary(t.key);
+    return `<div class="topic"><h3>${esc(t.text)}</h3><p class="small" style="margin:4px 0">${s.text}</p>
+      <div class="ev">${s.count?`${s.count} mentions (${s.priv} in private entries) · average mood on those days ${s.mood.toFixed(1)}`:""}</div></div>`;
+  }).join("");
+  const first=state.topics[state.topics.length-1];
+  $("#promptTopic").textContent = first.text.toLowerCase();
+}
+$("#topicForm").addEventListener("submit",e=>{
+  e.preventDefault(); const v=$("#topicText").value.trim(); if(!v) return;
+  const m=matchTopic(v); state.topics.push({text:v,key:m?m.key:null});
+  $("#topicText").value=""; renderTopics(); toast("Topic added. Lina will see a gentle prompt about it in her journal.");
+});
+
+/* ===================== shared entries ===================== */
+function renderShared(){
+  const sh=state.entries.filter(e=>e.share==="shared").reverse();
+  $("#sharedEntries").innerHTML=sh.map(e=>`<div class="sh-entry">
+    <div class="ev">${DOW[e.d]} ${DAYS[e.d]} Nov · mood ${e.mood}</div>
+    <div class="txt" dir="auto">${esc(e.text)}</div></div>`).join("");
+  const priv=state.entries.filter(e=>e.share==="private").length;
+  $("#lockedNote").innerHTML=`Private entries are not included in this view or its summaries.`;
+}
+
+/* ===================== alerts & safety team ===================== */
+function renderAlerts(){
+  const open=state.alerts.find(a=>a.status==="open");
+  $("#alertBanner").classList.toggle("on",!!open);
+  $("#linaDot").hidden=!open;
+  if(open) $("#alertQuote").textContent=open.text;
+}
+$("#ackAlert").addEventListener("click",()=>{
+  const a=state.alerts.find(a=>a.status==="open"); if(!a) return;
+  a.status="ack"; renderAll(); toast("Sample acknowledgement recorded. This is not a resolved clinical case.");
+});
+$("#noReply").addEventListener("click",()=>{
+  const a=state.alerts.find(a=>a.status==="open"); if(!a) return;
+  a.status="escalated";
+  state.cases.unshift({type:"alert",title:"Sample handoff for human review",patient:"Lina H. · Dr. Rana Haddad",
+    body:a.text,detail:"Simulated handoff; no clinician was notified",status:"open"});
+  renderAll(); toast("Sample handoff created. No live service contacted."); showView("safety");
+});
+function renderCases(){
+  const open=state.cases.filter(c=>c.status==="open").length;
+  $("#safetyCount").textContent=open?`(${open})`:"";
+  if(!state.cases.length){ $("#cases").innerHTML=`<div class="empty">No open cases. Escalated alerts and reported chats will appear here.</div>`; return; }
+  $("#cases").innerHTML=state.cases.map((c,i)=>`<div class="case ${c.type==='alert'?'urgent':''}">
+    <div class="top-row"><h3>${c.title}</h3><span class="status ${c.status==='open'?'open':'done'}">${c.status==='open'?'Open':c.status}</span></div>
+    <div class="ev">${c.patient} · ${c.detail}</div>
+    ${c.items?c.items.map(it=>`<blockquote>${esc(it)}</blockquote>`).join(""):`<blockquote>${esc(c.body)}</blockquote>`}
+    ${c.status==='open'?`<div class="acts">
+      ${c.type==='alert'?`<button class="btn ghost" data-act="reached" data-i="${i}">Reached clinician</button>
+      <button class="btn warn" data-act="emergency" data-i="${i}">Record sample emergency action</button>`:
+      `<button class="btn ghost" data-act="reviewed" data-i="${i}">Record review completed</button>
+      <button class="btn" data-act="improve" data-i="${i}">Send to AI quality review</button>`}
+    </div>`:""}
+  </div>`).join("");
+}
+$("#cases").addEventListener("click",e=>{
+  const b=e.target.closest("[data-act]"); if(!b) return; const c=state.cases[+b.dataset.i];
+  const labels={reached:"Resolved: clinician reached",emergency:"Sample emergency action recorded",reviewed:"Review recorded (sample)",improve:"Sent to AI quality review"};
+  c.status=labels[b.dataset.act]; renderCases();
+  toast(b.dataset.act==="emergency"?"Logged: emergency services contacted (simulated in this demo).":"Case updated and logged.");
+});
+
+/* ===================== scripted chat ===================== */
+const SCRIPT = {
+  start:{ai:["مسا الخير لينا 🌙 كيف كان يومك اليوم؟"],qr:[["عادي، بس عندي امتحان يوم الثلاثاء","exam"],["متعبة شوي","tired"]]},
+  tired:{ai:["سلامتك. شو اللي تعبك اليوم؟"],qr:[["الامتحان، عندي امتحان الثلاثاء","exam"]]},
+  exam:{ai:["الله يعينك. درستي إشي للامتحان؟ أو متى ناوية تبلشي؟"],qr:[["لسا ما درست","notyet"],["درست نص المادة","half"]]},
+  notyet:{ai:["طيب، شو المادة؟ وقديش ضايل عليكِ؟"],qr:[["إحصاء، ضايل ٣ فصول","plan"]]},
+  half:{ai:["ممتاز، هيك قطعتي شوط. شو المادة؟ وقديش ضايل؟"],qr:[["إحصاء، ضايل ٣ فصول","plan"]]},
+  plan:{ai:["شو رأيك تقسمي المادة لأجزاء صغيرة حسب الوقت والطاقة اللي عندك؟","فيكي تجربي متابعة الامتحان من الزر الموجود تحت."],qr:[["ماشي، اتفقنا","agreed"]]},
+  agreed:{ai:["اتفقنا 💪 وإذا حسيتي بضغط، احكيلي."],sys:"Sample exam follow up saved",qr:[]},
+  monday:{ai:["مسا الخير! كيف الدراسة لامتحان بكرا؟"],qr:[["خلصت فصلين","good"],["ما قدرت أدرس، مخنوقة","stuck"]]},
+  good:{ai:["قطعتي شوط منيح. كيف حاسة بالنسبة للفصل اللي ضايل؟ خلي مجال للراحة كمان إذا بتقدري."],qr:[]},
+  stuck:{ai:["مفهوم إنك مخنوقة، هالشي بيصير قبل الامتحانات. خلينا نختار أهم فصل ونبدأ فيه نص ساعة بس، وبعدين بنشوف.","وإذا ضل الضغط كبير، ممكن تحكي عنه مع د. رنا بالجلسة."],qr:[["ماشي، رح أجرب","good2"]]},
+  good2:{ai:["منيح إنك اخترتي خطوة تناسبك. فيكي ترجعي تحكي عن تجربتك وقت ما بدك."],qr:[]},
+};
+function startChat(){ state.chatLog=[]; $("#chat").innerHTML=""; play("start"); }
+function addMsg(who,text){ state.chatLog.push({who,text}); const d=document.createElement("div"); d.className="msg "+who; d.textContent=text; $("#chat").appendChild(d); scrollChat(); }
+function addSys(text){ const d=document.createElement("div"); d.className="sys"; d.textContent=text; $("#chat").appendChild(d); scrollChat(); }
+function scrollChat(){ const b=$(".ph-body"); b.scrollTop=b.scrollHeight; }
+function play(step){
+  state.chatStep=step; const s=SCRIPT[step];
+  $$(".qr").forEach(q=>q.remove());
+  s.ai.forEach(t=>addMsg("ai",t));
+  if(s.sys) addSys(s.sys);
+  if(s.qr.length){ const q=document.createElement("div"); q.className="qr";
+    s.qr.forEach(([label,next])=>{ const b=document.createElement("button"); b.textContent=label; b.onclick=()=>{ addMsg("me",label); play(next); }; q.appendChild(b); });
+    $("#chat").appendChild(q); scrollChat(); }
+}
+$("#skipMonday").addEventListener("click",()=>{ if(!state.chatLog.length) startChat(); addSys("Monday 16 Nov, 19:30"); play("monday"); });
+function sendFree(){
+ const v=$('#chatText').value.trim();if(!v)return;$('#chatText').value='';
+ $$('.qr').forEach(q=>q.remove());addMsg('me',v);
+ if(riskCheck(v)||/أؤذي نفسي|ما بدي أعيش|مش قادر أكمل حياتي|hurt myself|want to die|not want to live|self.harm/i.test(v)){
+  addMsg('ai', /[\u0600-\u06ff]/.test(v)?'شكراً إنك حكيت عن هالشي. هالمحادثة ما فيها مختص بيراقبها. إذا في خطر مباشر عليك، تواصل مع الطوارئ الآن أو مع شخص قريب بتثق فيه.':'Thank you for sharing this. This chat is not monitored. If you may be in immediate danger, contact emergency services or someone you trust now.');state.concern={text:v,source:'chat'};$('#crisis').classList.add('on');return;
+ }
+ const intent=REPLIES.find(r=>r[0].test(v))||(/^(اه|آه|نعم|لا|yes|no|maybe|يمكن|تمام|مش عارف)[.!؟? ]*$/i.test(v)?CONTINUE:null)||FALLBACK;
+ const lang=/[\u0600-\u06ff]/.test(v)?1:2;const key=intent[0].source+lang;const n=state.replyCounts[key]||0;state.replyCounts[key]=n+1;addMsg('ai',intent[lang][n%intent[lang].length]);state.lastIntent=intent[0].source;
+}
+
+$("#sendChat").addEventListener("click",sendFree);
+$("#chatText").addEventListener("keydown",e=>{ if(e.key==="Enter") sendFree(); });
+
+$("#reportChat").addEventListener("click",()=>{
+  if(!state.chatLog.length){ toast("Start a conversation first, then you can report it."); return; }
+  const used=[];
+  $("#reportItems").innerHTML=`<a><span>This chat</span><span>${state.chatLog.length} messages</span></a>`+
+    used.map(e=>`<a><span>Entry used by Numa · ${DAYS[e.d]} Nov</span><span>${e.share==='private'?'private':'shared'}</span></a>`).join("");
+  $("#report").classList.add("on"); $("#sendReport").focus();
+});
+$("#cancelReport").addEventListener("click",()=>$("#report").classList.remove("on"));
+$("#sendReport").addEventListener("click",()=>{
+  const used=[];
+  state.cases.unshift({type:"report",title:"Chat reported by patient",patient:"Lina H.",detail:`${state.chatLog.length} messages + ${used.length} entries used in the chat · view logged`,
+    items:[state.chatLog.map(m=>(m.who==="ai"?"Numa: ":"Lina: ")+m.text).join("\n"), ...used.map(e=>e.text)],status:"open"});
+  $("#report").classList.remove("on"); renderCases(); toast("Sample report created. No external message sent.");
+});
+
+/* ===================== misc ===================== */
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") $$(".modal").forEach(m=>m.classList.remove("on")); });
+$("#resetBtn").addEventListener("click",()=>{ fresh(); startChat(); renderAll(); showView("patient"); toast("Demo reset to sample data."); });
+
+function renderAll(){ renderMyEntries(); renderInsights(); renderGap(); renderTopics(); renderShared(); renderAlerts(); renderCases(); }
+const REPLIES=[
+[/امتحان|دراس|جامع|اختبار|exam|studying|university/i,['شو أكثر جزء بالامتحان شاغل بالك؟ الوقت ولا المادة نفسها؟','إذا بدك، ممكن نرتب الأشياء اللي ضايلة عليك بدون ما نحط ضغط إضافي.','كيف كانت تجربتك مع الدراسة اليوم؟ في إشي مشي أحسن من المتوقع؟'],['What is weighing on you most about the exam: the time, the material, or something else?','Would breaking the material into smaller pieces feel useful?','How did studying go today? Was any part easier than expected?']],
+[/نوم|نام|سهر|أرق|ارق|sleep|insomnia|awake/i,['كيف كان نومك مبارح؟ صحيت كثير ولا كان صعب تنامي من البداية؟','في إشي ببالك لما تحاولي تنامي؟','إذا بتحبي سجلي ساعات النوم عشان تتذكري تحكي عنها مع د. رنا.'],['How was last night? Was falling asleep hard, or did you wake up often?','Is there something on your mind when you try to sleep?','You could record your sleep to discuss with your clinician if you wish.']],
+[/قلق|توتر|ضغط|خوف|خايف|مخنوق|anxious|anxiety|stress|panic|worried/i,['شو أكثر إشي مسببلك هالشعور اليوم؟','بتحبي تحكي عن اللي صار، ولا تفضلي تجربي نشاط هادي شوي؟','إذا هالشعور عم يتكرر، ممكن تكتبي عنه لنقاشه مع د. رنا.'],['What feels most stressful right now?','Would you rather talk about what happened or try a quiet activity?','If this keeps happening, you might want to note it for your next session.']],
+[/صحاب|صديق|صاحب|رزان|وحد|friend|lonely|alone|relationship/i,['العلاقات بتفرق معنا كثير. شو صار بينكم اليوم؟','شو كنتِ بتتمني يصير بهالموقف؟','في شخص بترتاحي تحكي معه عن اللي صار؟'],['What happened with your friends today?','What did you hope would happen instead?','Is there someone you feel comfortable talking to about it?']],
+[/أهل|اهل|عائل|امي|أمي|ابوي|family|mother|father|parent/i,['كيف أثر عليك الحكي مع أهلك؟','شو بتحبي إنهم يفهموا عن وجهة نظرك؟','إذا بدك ممكن تضيفي الموضوع لقائمة الأشياء اللي بدك تناقشيها مع المختصة.'],['How did the conversation with your family affect you?','What would you like them to understand about your perspective?','You could add this to the topics you want to discuss with your clinician.']],
+[/حزن|زعلان|بكي|بكيت|حزين|sad|cry|upset|unhappy/i,['واضح إن اليوم كان ثقيل عليك. شو كان أصعب جزء فيه؟','مش ضروري ترتبي كل أفكارك هلأ. شو بتحبي تحكي أول؟','شو نوع الدعم اللي بتحسي إنه ممكن يناسبك اليوم؟'],['It sounds like today has been difficult. What was the hardest part?','You do not have to organize every thought right now. Where would you like to start?','What kind of support would feel useful today?']],
+[/شغل|مدير|دوام|work|job|boss/i,['شو اللي صار بالشغل وخلا اليوم متعب؟','هل في موقف معين بدك تحكي عنه؟','كيف بتحبي يكون وقتك بعد الدوام اليوم؟'],['What happened at work today?','Is there a particular situation you want to talk about?','What would you like your time after work to look like?']],
+[/تعب|مرهق|طاقة|tired|exhausted|energy/i,['كان التعب جسدي أكثر ولا من كثرة التفكير؟','كيف مر يومك من الصبح لحد هلأ؟','إذا بتحبي سجلي مستوى الطاقة بصفحة اليوميات.'],['Does it feel more like physical tiredness or mental overload?','How has your day been since you woke up?','You can record your energy in your journal if that would help.']],
+[/مبسوط|فرح|منيح|ممتاز|حلو|happy|great|excited|good day/i,['حلو! شو أحلى إشي صار معك اليوم؟','شو بتحسي ساعدك يكون يومك أحسن؟','ممكن تحفظي هاللحظة بيومياتك إذا بتحبي.'],['That sounds nice. What was the best part of today?','What do you think helped make today better?','You could save that moment in your journal if you like.']],
+[/دواء|علاج|حبوب|تشخيص|medication|medicine|diagnos|dose/i,['هالموضوع الأفضل تناقشيه مع المختصة. ما بقدر أحدد علاج أو جرعة. شو السؤال اللي بتحبي تجهزيه للجلسة؟','فيكي تكتبي استفسارك بصفحة الدعم. لا تغيري علاجك بناء على هالمحادثة.'],['Medication and diagnosis need a qualified clinician. What question would you like to prepare for your appointment?','You can draft a question in Support. Do not change treatment based on this demo.']],
+[/رياض|مشي|جيم|exercise|walk|gym/i,['كيف كان شعورك بعد النشاط؟','شو نوع الحركة اللي بتستمتعي فيها عادة؟','إذا بتحبي اختاري نشاط بسيط بناسبك اليوم.'],['How did you feel after the activity?','What kind of movement do you usually enjoy?','You can choose an activity that suits you today.']],
+[/دكتور|مختص|جلسة|مساعدة|doctor|therapist|support|help/i,['فيكي تفتحي صفحة الدعم وتجهزي طلب تجريبي للمختصة. ما رح ينبعث لأي شخص حقيقي.','شو بتحبي تناقشي بالجلسة القادمة؟'],['You can prepare a sample request in Support. No real clinician will receive it.','What would you like to discuss in your next session?']],
+[/مرحبا|سلام|هلا|hello|^hi\b|hey/i,['أهلاً! كيف كان يومك لحد هلأ؟','يا هلا، شو حابة تحكي اليوم؟','أهلاً فيكي. في إشي معين ببالك؟'],['Hello! How has your day been so far?','Hi there. What would you like to talk about?','Welcome. Is there something specific on your mind?']],
+[/شكرا|شكرًا|يسلم|thanks|thank you/i,['العفو. إذا بتحبي نكمل الحكي أنا بقدر أعرض أمثلة ثانية.','ولا يهمك. فيكي ترجعي لليوميات أو صفحة الدعم بأي وقت.'],['You are welcome. We can continue exploring examples if you like.','You can return to your journal or Support whenever you wish.']]
+];
+const CONTINUE=[/continuation/,['شو بتحبي توضحي أكثر عن اللي حكيناه؟','بتفضلي نكمل بنفس الموضوع ولا تحكي عن إشي ثاني؟','شو الخطوة اللي بتشوفيها مناسبة إلك؟'],['What would you like to add about that?','Would you like to stay with this topic or talk about something else?','What would feel like a useful next step for you?']];
+const FALLBACK=[/fallback/,['ما بقدر أفهم كل التفاصيل بهالنسخة التجريبية. بتحبي توضحي أكثر شو قصدك؟','شو أكثر جزء من هالموضوع مهم بالنسبة إلك؟','ممكن تحكي عن شعورك بهالموقف، أو تختاري موضوع مثل النوم أو الدراسة.','إذا بدك تحفظي هالفكرة للجلسة، فيكي تكتبيها باليوميات.'],['I may not understand every detail in this demo. Could you tell me a little more?','What part of this matters most to you?','You could describe how it made you feel, or choose a topic such as sleep or studies.','If you want to keep this thought for your session, you can write it in your journal.']];
+for(const id of ['stress','anxiety','energy','sleepQuality'])for(let i=1;i<=5;i++)$('#'+id).add(new Option(i,i));
+const ACTIVITIES=[['Gentle breathing','If comfortable, sit somewhere quiet and breathe at your normal pace for one minute. Stop if uncomfortable.'],['A moment outdoors','If it feels safe and accessible, spend a few minutes outside or near a window.'],['Prepare for your session','Write one thing that went well and one thing you want to discuss.'],['Connect with someone','Consider reaching out to a person you trust if you want company.'],['A short reflection','Notice what you are feeling without needing to change it.']];
+function renderActivities(){ $('#activities').innerHTML=ACTIVITIES.map(([name,desc],i)=>`<div class="activity"><b>${name}</b><p>${desc}</p><button class="btn ghost" data-plan="${i}">${state.activity.includes(i)?'Remove from my plan':'Add to my plan'}</button></div>`).join(''); $('#planList').innerHTML=state.activity.length?state.activity.map(i=>`<div class="activity"><b>${ACTIVITIES[i][0]}</b><p>${ACTIVITIES[i][1]}</p><button class="link" data-plan="${i}">Remove</button></div>`).join(''):'<p class="small muted">No activities selected. Explore Support to build your own plan.</p>'; }
+document.addEventListener('click',e=>{const b=e.target.closest('[data-plan]');if(!b)return;const i=+b.dataset.plan; state.activity=state.activity.includes(i)?state.activity.filter(x=>x!==i):[...state.activity,i];renderActivities();});
+function renderTracker(){const E=state.entries, C=state.checkins; const metrics=[['Mood',avg(E.map(e=>e.mood))],['Sleep (hours)',avg(SLEEP.filter(x=>x!==null))],...Object.entries({stress:'Stress',anxiety:'Anxiety',energy:'Energy',sleepQuality:'Sleep quality'}).map(([k,label])=>[label,avg(C.map(c=>c[k]).filter(v=>v!==null))])];$('#tracker').innerHTML=`<div class="mini"><h3>My mood and wellbeing</h3><p class="small muted">Fictional history and your demo check ins. Scores describe your own ratings only.</p><div class="metricgrid">${metrics.map(([l,v])=>`<div class="metric">${l}<strong>${v===null?'Not logged':v.toFixed(1)}</strong></div>`).join('')}</div><h3 style="margin-top:14px">Last seven sample days</h3>${DAYS.slice(TODAY-6,TODAY+1).map((d,j)=>{const vs=E.filter(e=>e.d===TODAY-6+j).map(e=>e.mood),m=avg(vs);return `<div class="weekrow"><span>${d} Nov</span><div class="weekbar"><i style="width:${(m||0)*20}%"></i></div><span>${m===null?'N/A':m.toFixed(1)}</span></div>`}).join('')}</div>`;renderActivities();renderRequests();}
+function renderRequests(){const el=$('#helpStatus');el.textContent=state.requests.length?`${state.requests.length} sample request(s). No real message sent.`:'';$('#clinicianRequests').innerHTML=state.requests.length?state.requests.map((r,i)=>`<div class="topic"><b>${r.kind}</b><p dir="auto">${esc(r.text)}</p><div class="ev">${esc(r.status)}</div>${r.status==='Awaiting sample review'?`<button class="btn ghost" data-request="${i}">Record human acknowledgement</button>`:''}</div>`).join(''):'<p class="small muted">No sample requests yet.</p>';}
+$('#requestHelp').onclick=()=>{if(!$('#helpConsent').checked){toast('Please choose whether to share the message.');return;}const text=$('#helpNote').value.trim();if(!text){toast('Write a sample message first.');return;}state.requests.unshift({kind:'Session or support request',text,status:'Awaiting sample review'});$('#helpNote').value='';$('#helpConsent').checked=false;renderRequests();toast('Sample request added to clinician dashboard.');};
+$('#openResources').onclick=()=>{state.concern=null;$('#crisis').classList.add('on');$('#shareConcern').hidden=true;};
+$('#shareConcern').onclick=()=>{if(!state.concern)return;state.alerts.push({...state.concern,status:'open'});state.concern=null;$('#crisis').classList.remove('on');renderAll();toast('Sample review request created. No one was contacted.');};
+new MutationObserver(()=>{if($('#crisis').classList.contains('on'))$('#shareConcern').hidden=!state.concern;}).observe($('#crisis'),{attributes:true,attributeFilter:['class']});
+document.addEventListener('click',e=>{const b=e.target.closest('[data-request]');if(!b)return;state.requests[+b.dataset.request].status='Acknowledged in sample dashboard';renderRequests();});
+$('#exportWeek').onclick=()=>{const text='Numa AI | Fictional demo summary\nNo clinical interpretation or live monitoring.\n\n'+computeInsights().map(i=>i.text+' '+i.ev).join('\n')+'\n\nSelected activities:\n'+state.activity.map(i=>ACTIVITIES[i][0]).join('\n');const url=URL.createObjectURL(new Blob([text],{type:'text/plain'}));const a=document.createElement('a');a.href=url;a.download='Numa-week-summary.txt';a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+
+renderAll();
+</script>
+</body>
+</html>
